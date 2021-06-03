@@ -77,7 +77,7 @@ class HangManSolver:
 				pruned_probs.append((l, p))
 		return pruned_probs
 
-
+"""
 solver = HangManSolver()
 
 max_steps = 0
@@ -128,14 +128,15 @@ print("most word:", max_word)
 print("most failed:", max_failed)
 print("percent failed:", failed / n_trials * 100)
 """
+#"""
 solver = HangManSolver()
-correct = "renega_e"
-incorrect = "st"
+correct = "pop"
+incorrect = "ascetibdnlr"
 
 words = solver.find_matches(correct, incorrect)
 #print("possible words:", words)
 #print()
 guess = solver.find_probabilities(correct, words)[0][0]
 print("possible next letters:", guess)
-"""
+#"""
 

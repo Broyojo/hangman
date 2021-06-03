@@ -8,61 +8,44 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	pb "github.com/cheggaaa/pb"
 )
 
 func main() {
 	solver := HangManSolver{}
 	solver.LoadDict("words.txt")
-
-	max_wrong := 0
-	max_wrong_word := ""
-
-	//bar := pb.StartNew(10000)
-
-	for _, word := range []string{"crwth"} {
-		correct := ""
-		for i := 0; i < len(word); i++ {
-			correct += "_"
+	size := 5000
+	bar := pb.StartNew(size)
+	var failed int
+	for _, word := range solver.Dict[:size] {
+		solver.Word = word
+		solver.CurrentWord = ""
+		for i := 0; i < len(solver.Word); i++ {
+			solver.CurrentWord += "_"
 		}
-		incorrect := ""
-		num_wrong := 0
-		for strings.Contains(correct, "_") {
-			matches := solver.FindMatches(correct, incorrect)
-
-			char, _, _, full_guess := solver.FindBestGuess(correct, matches)
-
-			if full_guess != "" {
-				correct = full_guess
-			} else {
-				if strings.Contains(word, string(char)) {
-					s := []rune(correct)
-					for k, v := range word {
-						if v == char {
-							s[k] = v
-						}
-					}
-					correct = string(s)
-				} else {
-					incorrect += string(char)
-					num_wrong++
-				}
-			}
-
-			fmt.Println(correct, string(char), num_wrong)
+		solver.WrongLetters = ""
+		for !solver.Finished {
+			solver.NextMove()
 		}
-		//bar.Increment()
-		if num_wrong > max_wrong {
-			max_wrong = num_wrong
-			max_wrong_word = word
+		solver.Finished = false
+		solver.Matches = make([]string, 0)
+		if len(solver.WrongLetters) >= 6 {
+			failed++
 		}
+		bar.Increment()
 	}
-	fmt.Println("max mistakes:", max_wrong)
-	fmt.Println("hardest word:", max_wrong_word)
-	//bar.Finish()
+	bar.Finish()
+	fmt.Println(float64(failed) / float64(size) * 100)
 }
 
 type HangManSolver struct {
-	Dict []string
+	Dict         []string
+	Word         string
+	CurrentWord  string
+	WrongLetters string
+	Matches      []string
+	Finished     bool
 }
 
 func (h *HangManSolver) LoadDict(filepath string) {
@@ -71,12 +54,9 @@ func (h *HangManSolver) LoadDict(filepath string) {
 	if err != nil {
 		log.Fatal("failed to open dictionary file")
 	}
-
 	scanner := bufio.NewScanner(file)
-
 	scanner.Split(bufio.ScanLines)
-
-	isValid := func(s string) bool {
+	isLetter := func(s string) bool {
 		for _, v := range s {
 			if v < 'a' || v > 'z' {
 				return false
@@ -84,88 +64,105 @@ func (h *HangManSolver) LoadDict(filepath string) {
 		}
 		return true
 	}
-
 	for scanner.Scan() {
 		text := strings.ToLower(scanner.Text())
-		if isValid(text) {
+		if isLetter(text) {
 			h.Dict = append(h.Dict, text)
 		}
 	}
-
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(h.Dict), func(i, j int) {
 		h.Dict[i], h.Dict[j] = h.Dict[j], h.Dict[i]
 	})
 }
 
-func (h *HangManSolver) FindMatches(correct, incorrect string) []string {
-	var matches []string
-
-	// sees if correct letters are in correct spot in word
-	valid := func(s string) bool {
-		for k := range s {
-			if correct[k] != '_' && s[k] != correct[k] {
+func (h *HangManSolver) FindMatches() {
+	matchesNonUnderscore := func(s string) bool {
+		for i := range h.CurrentWord {
+			if h.CurrentWord[i] != '_' && h.CurrentWord[i] != s[i] {
 				return false
 			}
 		}
 		return true
 	}
 
-	for _, word := range h.Dict {
-		if len(word) == len(correct) {
-			if !strings.ContainsAny(word, incorrect) {
-				if valid(word) {
-					matches = append(matches, word)
+	if len(h.Matches) == 0 {
+		for _, word := range h.Dict {
+			if len(word) == len(h.CurrentWord) {
+				if !strings.ContainsAny(word, h.WrongLetters) {
+					if matchesNonUnderscore(word) {
+						h.Matches = append(h.Matches, word)
+					}
+				}
+			}
+		}
+		if len(h.Matches) == 0 {
+			log.Fatal("word not in dictionary")
+		}
+	} else {
+		var list []string
+		for _, word := range h.Matches {
+			if !strings.ContainsAny(word, h.WrongLetters) {
+				if matchesNonUnderscore(word) {
+					list = append(list, word)
+				}
+			}
+		}
+		h.Matches = list
+	}
+}
+
+func (h *HangManSolver) NextMove() {
+	h.FindMatches()
+	var guess byte
+	if h.CurrentWord != h.Word {
+		if len(h.Matches) == 1 {
+			h.CurrentWord = h.Matches[0]
+		} else {
+			guess = h.FindNextLetter()
+			if strings.Contains(h.Word, string(guess)) {
+				h.UpdateCurrentWord(guess)
+			} else {
+				h.WrongLetters += string(guess)
+			}
+		}
+		//fmt.Println(string(guess), h.CurrentWord, h.WrongLetters)
+	} else {
+		h.Finished = true
+	}
+}
+
+func (h *HangManSolver) FindNextLetter() byte {
+	var guess byte
+	var maxCount int
+	for i, c := range h.CurrentWord {
+		if c == '_' {
+			counts := make(map[byte]int)
+			for _, match := range h.Matches {
+				char := match[i]
+				if _, in := counts[char]; !in {
+					counts[char] = 1
+				} else {
+					counts[char]++
+				}
+			}
+			for char, count := range counts {
+				if count > maxCount && !strings.Contains(h.CurrentWord, string(char)) {
+					maxCount = count
+					guess = char
 				}
 			}
 		}
 	}
-
-	return matches
+	return guess
 }
 
-func (h *HangManSolver) FindBestGuess(correct string, matches []string) (rune, int, int, string) {
-	/*
-
-		loop through every match and every character (the ones that are missing from the correct string)
-		and find the highest probability letters for each slot
-		the next turn is picking the highest probability letter out of all of them
-
-	*/
-
-	if len(matches) == 1 {
-		return 0, 0, 0, matches[0]
-	}
-
-	var indices []int
-	for i := range correct {
-		if correct[i] == '_' {
-			indices = append(indices, i)
+func (h *HangManSolver) UpdateCurrentWord(guess byte) {
+	s := []byte(h.CurrentWord)
+	for i := range h.Word {
+		if guess == h.Word[i] {
+			s[i] = h.Word[i]
 		}
 	}
-
-	var maxChar uint8
-	var maxCount int
-	var maxIndex int
-	for _, index := range indices {
-		counts := make(map[byte]int)
-		for _, word := range matches {
-			char := word[index]
-			if _, in := counts[char]; !in {
-				counts[char] = 1
-			} else {
-				counts[char] += 1
-			}
-		}
-		for k, v := range counts {
-			if v > maxCount && !strings.ContainsRune(correct, rune(k)) {
-				maxCount = v
-				maxChar = k
-				maxIndex = index
-			}
-		}
-	}
-
-	// letter, count, index
-	return rune(maxChar), maxCount, maxIndex, ""
+	h.CurrentWord = string(s)
 }
