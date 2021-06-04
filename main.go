@@ -74,22 +74,9 @@ func (h *HangManSolver) LoadDict(filepath string, minLength int) {
 	}
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
-	isLetter := func(s string) bool {
-		if len(s) < minLength {
-			return false
-		}
-		for _, v := range s {
-			if v < 'a' || v > 'z' {
-				return false
-			}
-		}
-		return true
-	}
+
 	for scanner.Scan() {
-		text := strings.ToLower(scanner.Text())
-		if isLetter(text) {
-			h.Dict = append(h.Dict, text)
-		}
+		h.Dict = append(h.Dict, scanner.Text())
 	}
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(h.Dict), func(i, j int) {
