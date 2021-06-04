@@ -8,35 +8,50 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	pb "github.com/cheggaaa/pb"
 )
 
 func main() {
+	/*
+		solver := HangManSolver{}
+		solver.LoadDict("words.txt", 5)
+		size := 2000
+		bar := pb.StartNew(size)
+		var failed int
+		var maxMistakes int
+		var hardestWord string
+		for _, word := range solver.Dict[:size] {
+			solver.Word = word
+			solver.CurrentWord = ""
+			for i := 0; i < len(solver.Word); i++ {
+				solver.CurrentWord += "_"
+			}
+			solver.WrongLetters = ""
+			for !solver.Finished {
+				solver.NextMove()
+			}
+			solver.Finished = false
+			solver.Matches = make([]string, 0)
+			if len(solver.WrongLetters) >= 6 {
+				failed++
+			}
+			bar.Increment()
+			if len(solver.WrongLetters) > maxMistakes {
+				maxMistakes = len(solver.WrongLetters)
+				hardestWord = word
+			}
+		}
+		bar.Finish()
+		fmt.Println("percent failed:", float64(failed)/float64(size)*100)
+		fmt.Println("hardest word:", hardestWord)
+		fmt.Println("took", maxMistakes, "mistakes")
+	*/
 	solver := HangManSolver{}
-	solver.LoadDict("words.txt")
-	size := 5000
-	bar := pb.StartNew(size)
-	var failed int
-	for _, word := range solver.Dict[:size] {
-		solver.Word = word
-		solver.CurrentWord = ""
-		for i := 0; i < len(solver.Word); i++ {
-			solver.CurrentWord += "_"
-		}
-		solver.WrongLetters = ""
-		for !solver.Finished {
-			solver.NextMove()
-		}
-		solver.Finished = false
-		solver.Matches = make([]string, 0)
-		if len(solver.WrongLetters) >= 6 {
-			failed++
-		}
-		bar.Increment()
-	}
-	bar.Finish()
-	fmt.Println(float64(failed) / float64(size) * 100)
+	solver.CurrentWord = "hang_an"
+	solver.WrongLetters = ""
+	solver.LoadDict("words.txt", 2)
+	solver.FindMatches()
+	letter := solver.FindNextLetter()
+	fmt.Println(string(letter))
 }
 
 type HangManSolver struct {
@@ -48,7 +63,7 @@ type HangManSolver struct {
 	Finished     bool
 }
 
-func (h *HangManSolver) LoadDict(filepath string) {
+func (h *HangManSolver) LoadDict(filepath string, minLength int) {
 	file, err := os.Open(filepath)
 	defer file.Close()
 	if err != nil {
@@ -57,6 +72,9 @@ func (h *HangManSolver) LoadDict(filepath string) {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 	isLetter := func(s string) bool {
+		if len(s) < minLength {
+			return false
+		}
 		for _, v := range s {
 			if v < 'a' || v > 'z' {
 				return false
@@ -153,6 +171,9 @@ func (h *HangManSolver) FindNextLetter() byte {
 				}
 			}
 		}
+	}
+	if len(h.Matches) == 1 {
+		fmt.Println("found single match!", h.Matches[0])
 	}
 	return guess
 }
