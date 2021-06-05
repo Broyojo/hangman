@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"math"
@@ -10,7 +11,60 @@ import (
 	"strings"
 )
 
+type state string
+
+func NewState(word string) state {
+	b := new(bytes.Buffer)
+	for range word {
+		b.WriteRune('_')
+	}
+	return state(b.String())
+}
+
+func (s state) matches(w string) bool {
+	n := len(s)
+	if n != len(w) {
+		return false
+	}
+	stateRunes := []rune(s)
+	wordRunes := []rune(w)
+	for i := 0; i < n; i++ {
+		if r := stateRunes[i]; r == '_' {
+			continue
+		} else if r != wordRunes[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s state) update(w string, letter rune) state {
+	n := len(s)
+	if n != len(w) {
+		panic("length mismatch")
+	}
+	stateRunes := []rune(s)
+	wordRunes := []rune(w)
+	b := new(bytes.Buffer)
+	for i := 0; i < n; i++ {
+		if letter == wordRunes[i] {
+			b.WriteRune(letter)
+		} else {
+			b.WriteRune(stateRunes[i])
+		}
+	}
+	return state(b.String())
+}
+
 func main() {
+
+	var target string
+	if len(os.Args) > 1 {
+		target = os.Args[1]
+	} else {
+		target = "document"
+	}
+
 	words := load()
 	wordsByCount := make(map[int][]string)
 	letters := make(map[rune]int)
@@ -20,16 +74,20 @@ func main() {
 			letters[r]++
 		}
 	}
-	const word = "matter"
+	state := NewState(target)
+	fmt.Printf("target = %q\n", target)
 	uniques := make(map[rune]bool)
-	for _, r := range word {
+	for _, r := range target {
 		uniques[r] = true
 	}
-	words = wordsByCount[len(word)]
+	words = wordsByCount[len(target)]
 	correctGuesses := make(map[rune]bool)
 	guessed := make(map[rune]bool)
-
+	var steps []step
 	for len(correctGuesses) < len(uniques) {
+		if len(words) == 1 {
+			break
+		}
 		var matches []match
 		for letter := range letters {
 			var list []string
@@ -53,21 +111,50 @@ func main() {
 				continue
 			}
 			guessed[best.letter] = true
-			correct := strings.ContainsRune(word, best.letter)
-			if correct {
+			if strings.ContainsRune(target, best.letter) {
 				correctGuesses[best.letter] = true
 				words = best.dict
-			}
-			fmt.Printf("%d / %d. guess %c: %v; %d left\n",
-				len(guessed)-len(correctGuesses),
-				len(guessed),
-				best.letter, correct, len(best.dict),
-			)
-			if correct {
+				state = state.update(target, best.letter)
+				var list []string
+				for _, word := range words {
+					if state.matches(word) {
+						list = append(list, word)
+					}
+				}
+				words = list
+				steps = append(steps, step{
+					letter:  best.letter,
+					state:   state,
+					correct: true,
+				})
 				break
+			} else {
+				steps = append(steps, step{
+					letter:  best.letter,
+					state:   state,
+					correct: false,
+				})
 			}
 		}
 	}
+	var wrong int
+	for _, s := range steps {
+		fmt.Printf("%s, guess %c", s.state, s.letter)
+		if !s.correct {
+			wrong++
+			fmt.Printf(" (%d wrong)", wrong)
+		}
+		fmt.Println()
+	}
+	if len(words) == 1 {
+		fmt.Printf("the word must be %q\n", words[0])
+	}
+}
+
+type step struct {
+	letter  rune
+	state   state
+	correct bool
 }
 
 type match struct {
@@ -80,8 +167,8 @@ func entropy(a, b int) (out float64) {
 	if a == 0 || b == 0 {
 		return 0
 	}
-	n := float64(a + b)
-	dist := []float64{float64(a) / n, float64(b) / n}
+	n := float64(a + b + 2)
+	dist := []float64{float64(a+1) / n, float64(b+1) / n}
 	for _, p := range dist {
 		out -= p * math.Log2(p)
 	}
