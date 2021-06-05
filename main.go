@@ -5,9 +5,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -23,15 +25,55 @@ func Run() error {
 		return fmt.Errorf("needs argument")
 	}
 	target = os.Args[1]
-	words, err := load(len(target))
+	all, err := load(0)
 	if err != nil {
 		return err
+	}
+	const n = 1000
+	var ok int
+	last := time.Now()
+	var i int
+	for {
+		i++
+		target = all[rand.Intn(len(all))]
+		r := Match(target, all)
+		if r.wrong <= 8 {
+			ok++
+		}
+		if time.Since(last) > time.Second {
+			fmt.Printf("%.2f%% ok (%d tries)\n", 100*float64(ok)/float64(i), i)
+			last = time.Now()
+		}
+	}
+	return nil
+}
+
+type result struct {
+	wrong int
+	steps []step
+}
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
+func Match(target string, all []string) result {
+	var words []string
+	for _, w := range all {
+		if len(w) != len(target) {
+			continue
+		}
+		words = append(words, w)
 	}
 	state := NewState(target)
 	correctGuesses := make(map[rune]bool)
 	guessed := make(map[rune]bool)
 	var steps []step
+	var wrong int
 	addStep := func(r rune, c bool) {
+		if !c {
+			wrong++
+		}
 		steps = append(steps, step{
 			state:   state,
 			letter:  r,
@@ -55,28 +97,43 @@ func Run() error {
 			})
 		}
 		sort.Sort(matches) // sort by best entropy and alphabetically
-		for _, best := range matches {
-			if guessed[best.letter] {
+		for _, match := range matches {
+			if guessed[match.letter] {
 				continue
 			}
-			guessed[best.letter] = true
-			if strings.ContainsRune(target, best.letter) {
-				correctGuesses[best.letter] = true
-				state = state.update(target, best.letter)
+			guessed[match.letter] = true
+			if strings.ContainsRune(target, match.letter) {
+				correctGuesses[match.letter] = true
+				state = state.update(target, match.letter)
 				var newWords []string
-				for _, word := range best.words {
+				for _, word := range match.words {
 					if state.matches(word) {
 						newWords = append(newWords, word)
 					}
 				}
-				addStep(best.letter, true)
+				addStep(match.letter, true)
 				words = newWords
 				break
 			} else {
-				addStep(best.letter, false)
+				addStep(match.letter, false)
 			}
 		}
 	}
+
+	return result{
+		wrong: wrong,
+		steps: steps,
+	}
+}
+
+type step struct {
+	letter  rune
+	state   state
+	correct bool
+	words   int
+}
+
+func dump(steps []step, words []string, target string) {
 	fmt.Println()
 	var wrong int
 	for _, s := range steps {
@@ -98,14 +155,6 @@ func Run() error {
 		}
 		fmt.Printf("\nguess %q (%s)\n\n", words[0], msg)
 	}
-	return nil
-}
-
-type step struct {
-	letter  rune
-	state   state
-	correct bool
-	words   int
 }
 
 // entropy of a set of total size "n" with subdivision of size "x"
@@ -126,7 +175,7 @@ func entropy(a, b int) (out float64) {
 	return
 }
 
-func load(n int) ([]string, error) {
+func load(min int) ([]string, error) {
 	f, err := os.Open("words.txt.gz")
 	if err != nil {
 		return nil, err
@@ -141,10 +190,7 @@ func load(n int) ([]string, error) {
 	var out []string
 	for s.Scan() {
 		line := strings.ToLower(strings.TrimSpace(s.Text()))
-		if len(line) == 0 {
-			continue
-		}
-		if len(line) != n {
+		if len(line) <= min {
 			continue
 		}
 		m[line] = true
