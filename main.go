@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"compress/gzip"
 	"fmt"
 	"math"
@@ -11,68 +10,25 @@ import (
 	"strings"
 )
 
-type state string
-
-func NewState(word string) state {
-	b := new(bytes.Buffer)
-	for range word {
-		b.WriteRune('_')
-	}
-	return state(b.String())
-}
-
-func (s state) matches(w string) bool {
-	n := len(s)
-	if n != len(w) {
-		return false
-	}
-	stateRunes := []rune(s)
-	wordRunes := []rune(w)
-	for i := 0; i < n; i++ {
-		if r := stateRunes[i]; r == '_' {
-			continue
-		} else if r != wordRunes[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (s state) unfinished() bool {
-	return strings.Contains(string(s), "_")
-}
-
-func (s state) update(w string, letter rune) state {
-	n := len(s)
-	if n != len(w) {
-		panic("length mismatch")
-	}
-	stateRunes := []rune(s)
-	wordRunes := []rune(w)
-	b := new(bytes.Buffer)
-	for i := 0; i < n; i++ {
-		if letter == wordRunes[i] {
-			b.WriteRune(letter)
-		} else {
-			b.WriteRune(stateRunes[i])
-		}
-	}
-	return state(b.String())
-}
-
 func main() {
-	var target string
-	if len(os.Args) != 2 {
-		fmt.Println("needs argument")
+	if err := Run(); err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	target = os.Args[1]
-	words := load(len(target))
-	state := NewState(target)
-	uniques := make(map[rune]bool)
-	for _, r := range target {
-		uniques[r] = true
+}
+
+func Run() error {
+	var target string
+	if len(os.Args) != 2 {
+		return fmt.Errorf("needs argument")
 	}
+	fmt.Println()
+	target = os.Args[1]
+	words, err := load(len(target))
+	if err != nil {
+		return err
+	}
+	state := NewState(target)
 	correctGuesses := make(map[rune]bool)
 	guessed := make(map[rune]bool)
 	var steps []step
@@ -88,9 +44,9 @@ func main() {
 		var matches matches
 		for _, letter := range []rune("abcdefghijklmnopqrstuvwxyz") {
 			var list []string
-			for _, w := range words {
-				if strings.ContainsRune(w, letter) {
-					list = append(list, w)
+			for _, word := range words {
+				if strings.ContainsRune(word, letter) {
+					list = append(list, word)
 				}
 			}
 			has := len(list)
@@ -109,14 +65,14 @@ func main() {
 			if strings.ContainsRune(target, best.letter) {
 				correctGuesses[best.letter] = true
 				state = state.update(target, best.letter)
-				var list []string
+				var newWords []string
 				for _, word := range best.dict {
 					if state.matches(word) {
-						list = append(list, word)
+						newWords = append(newWords, word)
 					}
 				}
 				addStep(best.letter, true)
-				words = list
+				words = newWords
 				break
 			} else {
 				addStep(best.letter, false)
@@ -135,8 +91,15 @@ func main() {
 		fmt.Println()
 	}
 	if len(words) == 1 {
-		fmt.Printf("\nguess %q\n", words[0])
+		var msg string
+		if words[0] == target {
+			msg = "correct"
+		} else {
+			msg = "wrong"
+		}
+		fmt.Printf("\nguess %q (%s)\n\n", words[0], msg)
 	}
+	return nil
 }
 
 type step struct {
@@ -144,39 +107,6 @@ type step struct {
 	state   state
 	correct bool
 	words   int
-}
-
-type match struct {
-	letter  rune
-	entropy float64
-	dict    []string
-}
-
-type matches []match
-
-func (m matches) Len() int {
-	return len(m)
-}
-
-func (m matches) Less(i, j int) bool {
-	e := func(i int) float64 {
-		return m[i].entropy
-	}
-	l := func(i int) rune {
-		return m[i].letter
-	}
-	switch {
-	case e(i) > e(j):
-		return true
-	case e(i) < e(j):
-		return false
-	default:
-		return l(i) < l(j)
-	}
-}
-
-func (m matches) Swap(i, j int) {
-	m[i], m[j] = m[j], m[i]
 }
 
 func entropy(a, b int) (out float64) {
@@ -191,14 +121,19 @@ func entropy(a, b int) (out float64) {
 	return
 }
 
-func load(n int) (out []string) {
+func load(n int) ([]string, error) {
 	f, err := os.Open("words.txt.gz")
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	defer f.Close()
 	gz, err := gzip.NewReader(f)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	s := bufio.NewScanner(gz)
 	m := make(map[string]bool)
+	var out []string
 	for s.Scan() {
 		line := strings.ToLower(strings.TrimSpace(s.Text()))
 		if len(line) == 0 {
@@ -209,15 +144,11 @@ func load(n int) (out []string) {
 		}
 		m[line] = true
 	}
-	check(s.Err())
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
 	for k := range m {
 		out = append(out, k)
 	}
-	return
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
+	return out, nil
 }
