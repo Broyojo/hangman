@@ -11,10 +11,14 @@ import (
 )
 
 func main() {
+	right := "gaze__"
+	wrong := "sytlrw"
 	dict := LoadDict("words.txt")
 	fmt.Println(len(dict))
-	matches := FindMatches(dict, "______", "")
+	matches := FindMatches(dict, right, wrong)
 	fmt.Println(matches)
+	guess := MakeGuess(matches, right)
+	fmt.Println(guess)
 }
 
 func LoadDict(path string) []string {
@@ -74,4 +78,35 @@ func FindMatches(dict []string, right, wrong string) []string {
 	}
 
 	return matches
+}
+
+func MakeGuess(matches []string, right string) string {
+	var maxCount int
+	var maxLetter rune
+
+	if len(matches) == 1 {
+		return matches[0]
+	}
+
+	for i := range right {
+		if right[i] == '_' {
+			counts := make(map[rune]int)
+			for _, match := range matches {
+				char := rune(match[i])
+				if _, ok := counts[char]; !ok {
+					counts[char] = 1
+				} else {
+					counts[char]++
+				}
+			}
+			for char, count := range counts {
+				if count > maxCount {
+					maxCount = count
+					maxLetter = char
+				}
+			}
+		}
+	}
+
+	return string(maxLetter)
 }
