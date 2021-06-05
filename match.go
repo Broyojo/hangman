@@ -8,22 +8,38 @@ type match struct {
 
 type matches []match
 
+const strategy = "freq" // vs "entropy"
+
 // ordering by high entropy and alphabetically by rune
 func (m matches) Less(i, j int) bool {
-	entropy := func(i int) float64 {
-		return m[i].entropy
-	}
 	letter := func(i int) rune {
 		return m[i].letter
 	}
-	switch {
-	case entropy(i) > entropy(j):
-		return true
-	case entropy(i) < entropy(j):
-		return false
+	switch strategy {
+	case "freq":
+		freq := func(i int) int {
+			return len(m[i].words)
+		}
+		switch {
+		case freq(i) > freq(j):
+			return true
+		case freq(i) < freq(j):
+			return false
+		}
+	case "entropy":
+		entropy := func(i int) float64 {
+			return m[i].entropy
+		}
+		switch {
+		case entropy(i) > entropy(j):
+			return true
+		case entropy(i) < entropy(j):
+			return false
+		}
 	default:
-		return letter(i) < letter(j)
+		panic(strategy)
 	}
+	return letter(i) < letter(j)
 }
 
 func (m matches) Len() int {

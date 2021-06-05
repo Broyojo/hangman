@@ -22,10 +22,9 @@ func (s state) matches(w string) bool {
 	if n != len(w) {
 		return false
 	}
-	stateRunes := []rune(s)
 	wordRunes := []rune(w)
-	for i := 0; i < n; i++ {
-		if r := stateRunes[i]; r == '_' {
+	for i, r := range []rune(s) {
+		if r == '_' {
 			continue
 		} else if r != wordRunes[i] {
 			return false
