@@ -49,14 +49,13 @@ func Run() error {
 					list = append(list, word)
 				}
 			}
-			has := len(list)
 			matches = append(matches, match{
 				letter:  letter,
-				entropy: entropy(has, len(words)-has),
-				dict:    list,
+				entropy: entropy2(len(words), len(list)),
+				words:   list,
 			})
 		}
-		sort.Sort(matches) // by best entropy and alphabetically
+		sort.Sort(matches) // sort by best entropy and alphabetically
 		for _, best := range matches {
 			if guessed[best.letter] {
 				continue
@@ -66,7 +65,7 @@ func Run() error {
 				correctGuesses[best.letter] = true
 				state = state.update(target, best.letter)
 				var newWords []string
-				for _, word := range best.dict {
+				for _, word := range best.words {
 					if state.matches(word) {
 						newWords = append(newWords, word)
 					}
@@ -109,6 +108,12 @@ type step struct {
 	words   int
 }
 
+// entropy of a set of total size "n" with subdivision of size "x"
+func entropy2(n, x int) (out float64) {
+	return entropy(n-x, x)
+}
+
+// entropy of a set divided into two parts of size "a" and "b"
 func entropy(a, b int) (out float64) {
 	if a == 0 || b == 0 {
 		return 0
