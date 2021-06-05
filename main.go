@@ -11,38 +11,51 @@ import (
 )
 
 func main() {
-	dict := LoadDict("words.txt", 2)
-	size := 1000
-	var failed int
-	for i, word := range dict[:size] {
-		right := MakeRightWord(len(word))
-		var wrong string
+	/*
+		dict := LoadDict("words.txt", 2)
+		size := 10000
+		var failed int
+		for i, word := range dict[:size] {
+			right := MakeRightWord(len(word))
+			var wrong string
 
-		matches := FindMatches(dict, right, wrong)
+			matches := FindMatches(dict, right, wrong)
 
-		for strings.ContainsRune(right, '_') {
-			guess := MakeGuess(matches, right)
+			for strings.ContainsRune(right, '_') {
+				guess := MakeGuess(matches, right)
 
-			if strings.Contains(word, guess) {
-				// right guess
-				if len(guess) == 1 {
-					right = FillInWord(word, right, rune(guess[0]))
+				if strings.Contains(word, guess) {
+					// right guess
+					if len(guess) == 1 {
+						right = FillInWord(word, right, rune(guess[0]))
+					} else {
+						right = guess
+					}
 				} else {
-					right = guess
+					// wrong guess
+					wrong += guess
 				}
-			} else {
-				// wrong guess
-				wrong += guess
-			}
 
-			matches = FindMatches(matches, right, wrong)
-			//fmt.Println(right, len(wrong))
+				matches = FindMatches(matches, right, wrong)
+				//fmt.Println(right, len(wrong))
+				//fmt.Println(len(matches))
+			}
+			if len(wrong) >= 6 {
+				failed++
+			}
+			if i%10 == 0 {
+				fmt.Println(float64(failed) / float64(i) * 100)
+			}
 		}
-		if len(wrong) >= 8 {
-			failed++
-		}
-		fmt.Println(float64(failed) / float64(i) * 100)
-	}
+	*/
+
+	dict := LoadDict("words.txt", 2)
+	right := "_oom"
+	wrong := "ankl"
+	matches := FindMatches(dict, right, wrong)
+	fmt.Println(matches)
+	guess := MakeGuess(matches, right)
+	fmt.Println(guess)
 }
 
 func LoadDict(path string, minWordLength int) []string {
@@ -123,6 +136,7 @@ func MakeGuess(matches []string, right string) string {
 					counts[char]++
 				}
 			}
+			fmt.Println(counts)
 			for char, count := range counts {
 				if count > maxCount {
 					maxCount = count
