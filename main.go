@@ -66,18 +66,17 @@ func Match(target string, all []string) result {
 		words = append(words, w)
 	}
 	state := NewState(target)
-	correctGuesses := make(map[rune]bool)
-	guessed := make(map[rune]bool)
+	guessed, correctGuesses := make(map[rune]bool), make(map[rune]bool)
 	var steps []step
 	var wrong int
-	addStep := func(r rune, c bool) {
-		if !c {
+	addStep := func(r rune, correct bool) {
+		if !correct {
 			wrong++
 		}
 		steps = append(steps, step{
 			state:   state,
 			letter:  r,
-			correct: c,
+			correct: correct,
 			words:   len(words),
 		})
 	}
@@ -119,7 +118,6 @@ func Match(target string, all []string) result {
 			}
 		}
 	}
-
 	return result{
 		wrong: wrong,
 		steps: steps,
