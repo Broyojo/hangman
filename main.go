@@ -20,14 +20,16 @@ func main() {
 }
 
 func Run() error {
-	var target string
-	if len(os.Args) != 2 {
-		return fmt.Errorf("needs argument")
-	}
-	target = os.Args[1]
 	all, err := load(0)
 	if err != nil {
 		return err
+	}
+	var target string
+	if len(os.Args) > 1 {
+		target := os.Args[1]
+		r := Match(target, all)
+		dump(r.steps, r.words, target)
+		return nil
 	}
 	const n = 1000
 	var ok int
@@ -37,7 +39,7 @@ func Run() error {
 		i++
 		target = all[rand.Intn(len(all))]
 		r := Match(target, all)
-		if r.wrong <= 8 {
+		if r.wrong < 6 {
 			ok++
 		}
 		if time.Since(last) > time.Second {
@@ -50,6 +52,7 @@ func Run() error {
 
 type result struct {
 	wrong int
+	words []string
 	steps []step
 }
 
@@ -104,24 +107,33 @@ func Match(target string, all []string) result {
 			if strings.ContainsRune(target, match.letter) {
 				correctGuesses[match.letter] = true
 				state = state.update(target, match.letter)
-				var newWords []string
-				for _, word := range match.words {
-					if state.matches(word) {
-						newWords = append(newWords, word)
-					}
-				}
 				addStep(match.letter, true)
-				words = newWords
+				words = filter(words, func(word string) bool {
+					return state.matches(word)
+				})
 				break
 			} else {
 				addStep(match.letter, false)
+				words = filter(words, func(word string) bool {
+					return !strings.Contains(word, string(match.letter))
+				})
 			}
 		}
 	}
 	return result{
 		wrong: wrong,
 		steps: steps,
+		words: words,
 	}
+}
+
+func filter(words []string, f func(string) bool) (out []string) {
+	for _, w := range words {
+		if f(w) {
+			out = append(out, w)
+		}
+	}
+	return
 }
 
 type step struct {
