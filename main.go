@@ -56,7 +56,7 @@ func Run() error {
 				dict:    list,
 			})
 		}
-		sort.Sort(matches)
+		sort.Sort(matches) // by best entropy and alphabetically
 		for _, best := range matches {
 			if guessed[best.letter] {
 				continue
