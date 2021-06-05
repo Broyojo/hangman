@@ -16,7 +16,7 @@ func main() {
 		size := 10000
 		var failed int
 		for i, word := range dict[:size] {
-			right := MakeRightWord(len(word))
+			right := MakeEmptyWord(len(word))
 			var wrong string
 
 			matches := FindMatches(dict, right, wrong)
@@ -43,15 +43,12 @@ func main() {
 			if len(wrong) >= 6 {
 				failed++
 			}
-			if i%10 == 0 {
-				fmt.Println(float64(failed) / float64(i) * 100)
-			}
+			fmt.Println(float64(failed) / float64(i) * 100)
 		}
 	*/
-
 	dict := LoadDict("words.txt", 2)
-	right := "_oom"
-	wrong := "ankl"
+	right := "woe"
+	wrong := "antsdbmlfpyrhgvc"
 	matches := FindMatches(dict, right, wrong)
 	fmt.Println(matches)
 	guess := MakeGuess(matches, right)
@@ -136,7 +133,6 @@ func MakeGuess(matches []string, right string) string {
 					counts[char]++
 				}
 			}
-			fmt.Println(counts)
 			for char, count := range counts {
 				if count > maxCount {
 					maxCount = count
@@ -149,7 +145,7 @@ func MakeGuess(matches []string, right string) string {
 	return string(maxLetter)
 }
 
-func MakeRightWord(length int) string {
+func MakeEmptyWord(length int) string {
 	var s string
 	for i := 0; i < length; i++ {
 		s += "_"
