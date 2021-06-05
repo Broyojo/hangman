@@ -38,6 +38,10 @@ func (s state) matches(w string) bool {
 	return true
 }
 
+func (s state) unfinished() bool {
+	return strings.Contains(string(s), "_")
+}
+
 func (s state) update(w string, letter rune) state {
 	n := len(s)
 	if n != len(w) {
@@ -57,39 +61,32 @@ func (s state) update(w string, letter rune) state {
 }
 
 func main() {
-
 	var target string
-	if len(os.Args) > 1 {
-		target = os.Args[1]
-	} else {
-		target = "document"
+	if len(os.Args) != 2 {
+		fmt.Println("needs argument")
+		os.Exit(1)
 	}
-
-	words := load()
-	wordsByCount := make(map[int][]string)
-	letters := make(map[rune]int)
-	for _, w := range words {
-		wordsByCount[len(w)] = append(wordsByCount[len(w)], w)
-		for _, r := range w {
-			letters[r]++
-		}
-	}
+	target = os.Args[1]
+	words := load(len(target))
 	state := NewState(target)
-	fmt.Printf("target = %q\n", target)
 	uniques := make(map[rune]bool)
 	for _, r := range target {
 		uniques[r] = true
 	}
-	words = wordsByCount[len(target)]
 	correctGuesses := make(map[rune]bool)
 	guessed := make(map[rune]bool)
 	var steps []step
-	for len(correctGuesses) < len(uniques) {
-		if len(words) == 1 {
-			break
-		}
-		var matches []match
-		for letter := range letters {
+	addStep := func(r rune, c bool) {
+		steps = append(steps, step{
+			state:   state,
+			letter:  r,
+			correct: c,
+			words:   len(words),
+		})
+	}
+	for state.unfinished() && len(words) != 1 {
+		var matches matches
+		for _, letter := range []rune("abcdefghijklmnopqrstuvwxyz") {
 			var list []string
 			for _, w := range words {
 				if strings.ContainsRune(w, letter) {
@@ -103,9 +100,7 @@ func main() {
 				dict:    list,
 			})
 		}
-		sort.Slice(matches, func(i, j int) bool {
-			return matches[i].entropy > matches[j].entropy
-		})
+		sort.Sort(matches)
 		for _, best := range matches {
 			if guessed[best.letter] {
 				continue
@@ -113,41 +108,34 @@ func main() {
 			guessed[best.letter] = true
 			if strings.ContainsRune(target, best.letter) {
 				correctGuesses[best.letter] = true
-				words = best.dict
 				state = state.update(target, best.letter)
 				var list []string
-				for _, word := range words {
+				for _, word := range best.dict {
 					if state.matches(word) {
 						list = append(list, word)
 					}
 				}
+				addStep(best.letter, true)
 				words = list
-				steps = append(steps, step{
-					letter:  best.letter,
-					state:   state,
-					correct: true,
-				})
 				break
 			} else {
-				steps = append(steps, step{
-					letter:  best.letter,
-					state:   state,
-					correct: false,
-				})
+				addStep(best.letter, false)
 			}
 		}
 	}
 	var wrong int
 	for _, s := range steps {
-		fmt.Printf("%s, guess %c", s.state, s.letter)
 		if !s.correct {
 			wrong++
-			fmt.Printf(" (%d wrong)", wrong)
+		}
+		fmt.Printf("%6d words, %2d wrong; guess %q", s.words, wrong, s.letter)
+		if s.correct {
+			fmt.Printf(" %s", s.state)
 		}
 		fmt.Println()
 	}
 	if len(words) == 1 {
-		fmt.Printf("the word must be %q\n", words[0])
+		fmt.Printf("\nguess %q\n", words[0])
 	}
 }
 
@@ -155,12 +143,40 @@ type step struct {
 	letter  rune
 	state   state
 	correct bool
+	words   int
 }
 
 type match struct {
 	letter  rune
 	entropy float64
 	dict    []string
+}
+
+type matches []match
+
+func (m matches) Len() int {
+	return len(m)
+}
+
+func (m matches) Less(i, j int) bool {
+	e := func(i int) float64 {
+		return m[i].entropy
+	}
+	l := func(i int) rune {
+		return m[i].letter
+	}
+	switch {
+	case e(i) > e(j):
+		return true
+	case e(i) < e(j):
+		return false
+	default:
+		return l(i) < l(j)
+	}
+}
+
+func (m matches) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
 }
 
 func entropy(a, b int) (out float64) {
@@ -175,7 +191,7 @@ func entropy(a, b int) (out float64) {
 	return
 }
 
-func load() (out []string) {
+func load(n int) (out []string) {
 	f, err := os.Open("words.txt.gz")
 	check(err)
 	defer f.Close()
@@ -186,6 +202,9 @@ func load() (out []string) {
 	for s.Scan() {
 		line := strings.ToLower(strings.TrimSpace(s.Text()))
 		if len(line) == 0 {
+			continue
+		}
+		if len(line) != n {
 			continue
 		}
 		m[line] = true
