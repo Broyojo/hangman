@@ -11,22 +11,46 @@ import (
 )
 
 func main() {
-	right := "gaze__"
-	wrong := "sytlrw"
-	dict := LoadDict("words.txt")
-	fmt.Println(len(dict))
-	matches := FindMatches(dict, right, wrong)
-	fmt.Println(matches)
-	guess := MakeGuess(matches, right)
-	fmt.Println(guess)
+	dict := LoadDict("words.txt", 2)
+	size := 1000
+	var failed int
+	for i, word := range dict[:size] {
+		right := MakeRightWord(len(word))
+		var wrong string
+
+		matches := FindMatches(dict, right, wrong)
+
+		for strings.ContainsRune(right, '_') {
+			guess := MakeGuess(matches, right)
+
+			if strings.Contains(word, guess) {
+				// right guess
+				if len(guess) == 1 {
+					right = FillInWord(word, right, rune(guess[0]))
+				} else {
+					right = guess
+				}
+			} else {
+				// wrong guess
+				wrong += guess
+			}
+
+			matches = FindMatches(matches, right, wrong)
+			//fmt.Println(right, len(wrong))
+		}
+		if len(wrong) >= 8 {
+			failed++
+		}
+		fmt.Println(float64(failed) / float64(i) * 100)
+	}
 }
 
-func LoadDict(path string) []string {
+func LoadDict(path string, minWordLength int) []string {
 	file, err := os.Open(path)
-	defer file.Close()
 	if err != nil {
 		log.Fatal("failed to open dictionary file")
 	}
+	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
@@ -34,7 +58,7 @@ func LoadDict(path string) []string {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		if len(text) != 1 {
+		if len(text) >= minWordLength {
 			dict = append(dict, scanner.Text())
 		}
 	}
@@ -109,4 +133,22 @@ func MakeGuess(matches []string, right string) string {
 	}
 
 	return string(maxLetter)
+}
+
+func MakeRightWord(length int) string {
+	var s string
+	for i := 0; i < length; i++ {
+		s += "_"
+	}
+	return s
+}
+
+func FillInWord(word, right string, letter rune) string {
+	s := []byte(right)
+	for i := range right {
+		if rune(word[i]) == letter {
+			s[i] = word[i]
+		}
+	}
+	return string(s)
 }
