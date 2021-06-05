@@ -22,7 +22,6 @@ func Run() error {
 	if len(os.Args) != 2 {
 		return fmt.Errorf("needs argument")
 	}
-	fmt.Println()
 	target = os.Args[1]
 	words, err := load(len(target))
 	if err != nil {
@@ -78,6 +77,7 @@ func Run() error {
 			}
 		}
 	}
+	fmt.Println()
 	var wrong int
 	for _, s := range steps {
 		if !s.correct {
