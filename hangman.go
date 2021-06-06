@@ -43,21 +43,29 @@ func (h hangman) Guess(gs GameState) (rune, error) {
 		if guessed[letter] {
 			continue
 		}
-		var list []string
+		var v float64
+		n := float64(len(words))
 		for _, word := range words {
-			if strings.ContainsRune(word, letter) {
-				list = append(list, word)
-			}
+			v += float64(count(word, letter)) / n
 		}
 		matches = append(matches, match{
 			letter: letter,
-			words:  len(list),
+			value:  v,
 		})
 	}
 	if len(matches) == 0 {
 		return 0, fmt.Errorf("no guess possible")
 	}
 	return matches.Best().letter, nil
+}
+
+func count(word string, letter rune) (out int) {
+	for _, r := range word {
+		if r == letter {
+			out++
+		}
+	}
+	return
 }
 
 func validate(gs GameState) error {

@@ -5,12 +5,12 @@ import (
 )
 
 type match struct {
-	letter rune // the letter matched
-	words  int  // number of matching words
+	letter rune    // the letter matched
+	value  float64 // number of matching words
 }
 
 func (m match) String() string {
-	return fmt.Sprintf("%q %d words", m.letter, m.words)
+	return fmt.Sprintf("%q:%f", m.letter, m.value)
 }
 
 type matches []match
@@ -57,13 +57,13 @@ func (m matches) Less(i, j int) bool {
 	letter := func(i int) rune {
 		return m[i].letter
 	}
-	freq := func(i int) int {
-		return m[i].words
+	value := func(i int) float64 {
+		return m[i].value
 	}
 	switch {
-	case freq(i) > freq(j):
+	case value(i) > value(j):
 		return true
-	case freq(i) < freq(j):
+	case value(i) < value(j):
 		return false
 	default:
 		return Less(letter(i), letter(j))
