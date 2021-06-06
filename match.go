@@ -1,21 +1,22 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type match struct {
-	letter  rune     // the letter matched
-	entropy float64  // entropy of words that match vs not
-	words   []string // matching words
+	letter rune // the letter matched
+	words  int  // number of matching words
 }
 
 func (m match) String() string {
-	return fmt.Sprintf("%q (%.4f) %d words", m.letter, m.entropy, len(m.words))
+	return fmt.Sprintf("%q %d words", m.letter, m.words)
 }
 
 type matches []match
 
 const (
-	strategy      = "freq" // vs "entropy"
+	strategy      = "freq" // "freq" vs "entropy"
 	lettersByFreq = "etaoinsrhdlucmfywgpbvkxqjz"
 )
 
@@ -39,36 +40,34 @@ func Less(a, b rune) bool {
 	return index(a) < index(b)
 }
 
-// ordering by high entropy and alphabetically by rune
+func (m matches) Best() match {
+	best := -1
+	for i := range m {
+		if best == -1 {
+			best = i
+		}
+		if m.Less(i, best) {
+			best = i
+		}
+	}
+	return m[best]
+}
+
 func (m matches) Less(i, j int) bool {
 	letter := func(i int) rune {
 		return m[i].letter
 	}
-	switch strategy {
-	case "freq":
-		freq := func(i int) int {
-			return len(m[i].words)
-		}
-		switch {
-		case freq(i) > freq(j):
-			return true
-		case freq(i) < freq(j):
-			return false
-		}
-	case "entropy":
-		entropy := func(i int) float64 {
-			return m[i].entropy
-		}
-		switch {
-		case entropy(i) > entropy(j):
-			return true
-		case entropy(i) < entropy(j):
-			return false
-		}
-	default:
-		panic(strategy)
+	freq := func(i int) int {
+		return m[i].words
 	}
-	return Less(letter(i), letter(j))
+	switch {
+	case freq(i) > freq(j):
+		return true
+	case freq(i) < freq(j):
+		return false
+	default:
+		return Less(letter(i), letter(j))
+	}
 }
 
 func (m matches) Len() int {

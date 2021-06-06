@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -29,7 +28,7 @@ func (h hangman) Guess(gs GameState) (rune, error) {
 			continue
 		}
 		var exclude bool
-		for _, r := range gs.BadGuesses {
+		for _, r := range gs.Incorrect {
 			if strings.ContainsRune(w, r) {
 				exclude = true
 			}
@@ -51,21 +50,19 @@ func (h hangman) Guess(gs GameState) (rune, error) {
 			}
 		}
 		matches = append(matches, match{
-			letter:  letter,
-			entropy: entropy2(len(words), len(list)),
-			words:   list,
+			letter: letter,
+			words:  len(list),
 		})
 	}
 	if len(matches) == 0 {
 		return 0, fmt.Errorf("no guess possible")
 	}
-	sort.Sort(matches)
-	return matches[0].letter, nil
+	return matches.Best().letter, nil
 }
 
 func validate(gs GameState) error {
 	bad := make(map[rune]bool)
-	for _, r := range gs.BadGuesses {
+	for _, r := range gs.Incorrect {
 		bad[r] = true
 	}
 	for _, r := range gs.Current {

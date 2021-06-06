@@ -8,9 +8,9 @@ import (
 // a hangman-style string with '_' rune ("blank") for "unknown letter"
 type state string
 
-func NewState(word string) state {
+func NewState(n int) state {
 	b := new(bytes.Buffer)
-	for range word {
+	for i := 0; i < n; i++ {
 		b.WriteRune('_')
 	}
 	return state(b.String())
