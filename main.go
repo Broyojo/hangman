@@ -13,14 +13,53 @@ import (
 )
 
 func main() {
+	h, err := NewHangman()
+	check(err)
+	r, err := h.Guess(GameState{
+		BadGuesses: nil,
+		Current:    "m___h",
+	})
+	check(err)
+	fmt.Printf("guess: %q\n", r)
+
+	return
+
 	if err := Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+type GameState struct {
+	BadGuesses []rune // guesses thus far in the game
+	Current    string // a string with correct guesses and underscores
+}
+
+func (gs GameState) Guessed() map[rune]bool {
+	guessed := make(map[rune]bool)
+	for _, r := range gs.BadGuesses {
+		guessed[r] = true
+	}
+	for _, r := range gs.Current {
+		if r != '_' {
+			guessed[r] = true
+		}
+	}
+	return guessed
+}
+
+type Hangman interface {
+	Guess(GameState) (rune, error)
+}
+
 func Run() error {
-	all, err := load(0)
+	all, err := load()
 	if err != nil {
 		return err
 	}
@@ -185,7 +224,7 @@ func entropy(a, b int) (out float64) {
 	return
 }
 
-func load(min int) ([]string, error) {
+func load() ([]string, error) {
 	f, err := os.Open("words.txt.gz")
 	if err != nil {
 		return nil, err
@@ -200,7 +239,7 @@ func load(min int) ([]string, error) {
 	var out []string
 	for s.Scan() {
 		line := strings.ToLower(strings.TrimSpace(s.Text()))
-		if len(line) <= min {
+		if len(line) == 0 {
 			continue
 		}
 		m[line] = true
