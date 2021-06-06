@@ -23,18 +23,18 @@ func (h hangman) Guess(gs GameState) (rune, error) {
 	}
 	s := state(gs.Current)
 	var words []string
-	for _, w := range h.words {
-		if !s.matches(w) {
+	for _, word := range h.words {
+		if !s.matches(word) {
 			continue
 		}
 		var exclude bool
 		for _, r := range gs.Incorrect {
-			if strings.ContainsRune(w, r) {
+			if strings.ContainsRune(word, r) {
 				exclude = true
 			}
 		}
 		if !exclude {
-			words = append(words, w)
+			words = append(words, word)
 		}
 	}
 	guessed := gs.Guessed()
@@ -43,7 +43,7 @@ func (h hangman) Guess(gs GameState) (rune, error) {
 		if guessed[letter] {
 			continue
 		}
-		var v float64
+		var v float64 // expected number of matches
 		n := float64(len(words))
 		for _, word := range words {
 			v += float64(count(word, letter)) / n
