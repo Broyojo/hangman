@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,41 +12,65 @@ import (
 )
 
 func main() {
-	/*
-		dict := LoadDict("words.txt", 2)
-		size := 10000
-		var failed int
-		for i, word := range dict[:size] {
-			right := MakeEmptyWord(len(word))
-			var wrong string
+	if err := Run0(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
-			matches := FindMatches(dict, right, wrong)
+func Run0() error {
+	var who string
+	flag.StringVar(&who, "w", "dave", "who's code to run")
+	flag.Parse()
+	var runfunc func() error
+	switch who {
+	case "mike":
+		runfunc = Run
+	case "dave":
+		runfunc = Run2
+	default:
+		return fmt.Errorf("unknown mode %q", who)
+	}
+	return runfunc()
+}
 
-			for strings.ContainsRune(right, '_') {
-				guess := MakeGuess(matches, right)
+func oldcode() {
+	dict := LoadDict("words.txt", 2)
+	size := 10000
+	var failed int
+	for i, word := range dict[:size] {
+		right := MakeEmptyWord(len(word))
+		var wrong string
 
-				if strings.Contains(word, guess) {
-					// right guess
-					if len(guess) == 1 {
-						right = FillInWord(word, right, rune(guess[0]))
-					} else {
-						right = guess
-					}
+		matches := FindMatches(dict, right, wrong)
+
+		for strings.ContainsRune(right, '_') {
+			guess := MakeGuess(matches, right)
+
+			if strings.Contains(word, guess) {
+				// right guess
+				if len(guess) == 1 {
+					right = FillInWord(word, right, rune(guess[0]))
 				} else {
-					// wrong guess
-					wrong += guess
+					right = guess
 				}
+			} else {
+				// wrong guess
+				wrong += guess
+			}
 
-				matches = FindMatches(matches, right, wrong)
-				//fmt.Println(right, len(wrong))
-				//fmt.Println(len(matches))
-			}
-			if len(wrong) >= 6 {
-				failed++
-			}
-			fmt.Println(float64(failed) / float64(i) * 100)
+			matches = FindMatches(matches, right, wrong)
+			//fmt.Println(right, len(wrong))
+			//fmt.Println(len(matches))
 		}
-	*/
+		if len(wrong) >= 6 {
+			failed++
+		}
+		fmt.Println(float64(failed) / float64(i) * 100)
+	}
+}
+
+func Run2() error {
 	dict := LoadDict("words.txt", 2)
 	right := "woe"
 	wrong := "antsdbmlfpyrhgvc"
@@ -53,6 +78,7 @@ func main() {
 	fmt.Println(matches)
 	guess := MakeGuess(matches, right)
 	fmt.Println(guess)
+	return nil
 }
 
 func LoadDict(path string, minWordLength int) []string {
