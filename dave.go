@@ -17,8 +17,8 @@ func (d dave) Guess(gs GameState) (rune, error) {
 	matches := FindMatches(d.dict, gs.Current, wrong.String())
 	guess := MakeGuess(matches, gs.Current)
 	runes := []rune(guess)
-	if len(runes) != 1 {
-		return 0, fmt.Errorf("bad response from code")
+	if n := len(runes); n != 1 {
+		return 0, fmt.Errorf("bad response from code: %d runes (%q)", n, guess)
 	}
 	return runes[0], nil
 }

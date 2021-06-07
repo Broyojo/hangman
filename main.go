@@ -12,13 +12,13 @@ import (
 )
 
 func main() {
-	if err := Run0(); err != nil {
+	if err := Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-func Run0() error {
+func Run() error {
 	var mode string
 	flag.StringVar(&mode, "m", "dave", "who's algo to run")
 	flag.Parse()
