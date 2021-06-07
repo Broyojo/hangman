@@ -112,10 +112,6 @@ func MakeGuess(matches []string, right string) string {
 	var maxCount int
 	var maxLetter rune
 
-	if len(matches) == 1 {
-		return matches[0]
-	}
-
 	for i := range right {
 		if right[i] == '_' {
 			counts := make(map[rune]int)
