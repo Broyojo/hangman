@@ -49,11 +49,15 @@ func Test(h Hangman, word string) (int, error) {
 	return len(gs.Incorrect), nil
 }
 
-func Run() error {
+func Mike() error {
 	h, err := NewHangman()
 	if err != nil {
 		return err
 	}
+	return RunTests(h)
+}
+
+func RunTests(h Hangman) error {
 	const word = "comfortable"
 	n, err := Test(h, word)
 	if err != nil {

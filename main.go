@@ -19,58 +19,26 @@ func main() {
 }
 
 func Run0() error {
-	var who string
-	flag.StringVar(&who, "w", "dave", "who's code to run")
+	var mode string
+	flag.StringVar(&mode, "m", "dave", "who's algo to run")
 	flag.Parse()
-	var runfunc func() error
-	switch who {
+	var f func() (Hangman, error)
+	switch mode {
 	case "mike":
-		runfunc = Run
+		f = NewHangman
 	case "dave":
-		runfunc = Run2
+		f = NewDave
 	default:
-		return fmt.Errorf("unknown mode %q", who)
+		return fmt.Errorf("unknown mode %q", mode)
 	}
-	return runfunc()
+	h, err := f()
+	if err != nil {
+		return err
+	}
+	return RunTests(h)
 }
 
-func oldcode() {
-	dict := LoadDict("words.txt", 2)
-	size := 10000
-	var failed int
-	for i, word := range dict[:size] {
-		right := MakeEmptyWord(len(word))
-		var wrong string
-
-		matches := FindMatches(dict, right, wrong)
-
-		for strings.ContainsRune(right, '_') {
-			guess := MakeGuess(matches, right)
-
-			if strings.Contains(word, guess) {
-				// right guess
-				if len(guess) == 1 {
-					right = FillInWord(word, right, rune(guess[0]))
-				} else {
-					right = guess
-				}
-			} else {
-				// wrong guess
-				wrong += guess
-			}
-
-			matches = FindMatches(matches, right, wrong)
-			//fmt.Println(right, len(wrong))
-			//fmt.Println(len(matches))
-		}
-		if len(wrong) >= 6 {
-			failed++
-		}
-		fmt.Println(float64(failed) / float64(i) * 100)
-	}
-}
-
-func Run2() error {
+func Dave() error {
 	dict := LoadDict("words.txt", 2)
 	right := "woe"
 	wrong := "antsdbmlfpyrhgvc"
